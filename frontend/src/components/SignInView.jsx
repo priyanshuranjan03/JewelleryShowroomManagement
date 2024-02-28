@@ -11,7 +11,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+
 
 function SignInView({ onSignIn, onSignUpClick }) {
     const [formData, setFormData] = useState({
@@ -55,12 +55,17 @@ function SignInView({ onSignIn, onSignUpClick }) {
             // Validate login credentials
             const isValidCredentials = userData.some(
                 (user) => user.email === formData.email && user.password === formData.password
+
             );
 
             if (isValidCredentials) {
                 // If validation passes, proceed with sign-in
                 console.log('User signed in:', formData);
-                onSignIn();
+                const user = userData.find((user) => user.email === formData.email);
+
+
+                console.log(user.name)
+                onSignIn(user.name);
             } else {
                 setErrors({
                     email: 'Invalid email or password',
