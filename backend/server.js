@@ -13,6 +13,17 @@ const connection = mysql.createConnection({
     password: '',
     database: 'lab',
 });
+function executeQuery(sql, values) {
+    return new Promise((resolve, reject) => {
+        connection.query(sql, values, (error, results) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(results);
+            }
+        });
+    });
+}
 app.get('/', (req, res) => {
     res.json("hello");
 });
@@ -43,6 +54,23 @@ app.post('/delete_jewellery_item', (req, res) => {
         console.log('Jewellery item deleted successfully:', data);
         res.json({ success: true });
     })
+});
+app.post('/update_jewellery_item', (req, res) => {
+    const { descr, jewellery_id, item_name, stock, buy_cost, rent_cost, weight } = req.body;
+    const sql = `
+        UPDATE jewellery_item
+        SET descr=?,item_name=?,stock=?,buy_cost=?,rent_cost=?,weight=?
+        WHERE supplier_id = ?;
+    `;
+    connection.query(sql, [descr, item_name, stock, buy_cost, rent_cost, weight, jewellery_id], (err, result) => {
+        if (err) {
+            console.error('Error updating Jewellery details:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        console.log('Jewellery details updated successfully:', result);
+        res.json({ success: true });
+    });
 });
 app.post('/add_jewellery_item', (req, res) => {
     const { descr, jewellery_id, item_name, stock, buy_cost, rent_cost, weight } = req.body;
@@ -79,6 +107,23 @@ app.post('/add_supplier', (req, res) => {
         console.log('Supplier details added successfully:', result);
         res.json({ success: true });
     })
+});
+app.post('/update_supplier', (req, res) => {
+    const { supplier_id, FName, LName, Contact_no } = req.body;
+    const sql = `
+        UPDATE supplier
+        SET FName=?,LName=?,Contact_no=?
+        WHERE supplier_id = ?;
+    `;
+    connection.query(sql, [FName, LName, Contact_no, supplier_id], (err, result) => {
+        if (err) {
+            console.error('Error updating supplier details:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        console.log('Supplier details updated successfully:', result);
+        res.json({ success: true });
+    });
 });
 app.post('/delete_supplier', (req, res) => {
     const { supplier_id } = req.body;
@@ -135,7 +180,23 @@ app.delete('/delete_customer', (req, res) => {
         res.json({ success: true });
     });
 });
+app.post('/update_customer', (req, res) => {
+    const { cust_id, FName, LName, Contact, loyalty_points } = req.body;
+    const sql = `
+        UPDATE customer
+        SET FName=?,LName=?,Contact=?,loyalty_points=?
+        WHERE cust_id = ?;
+    `;
+    connection.query(sql, [FName, LName, Contact, loyalty_points, cust_id], (err, result) => {
+        if (err) {
+            console.error('Error updating customer details:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
 
+        console.log('Customer details updated successfully:', result);
+        res.json({ success: true });
+    });
+});
 // Get Customers
 app.get('/get_customers', (req, res) => {
     const sql = 'SELECT * FROM customer';
@@ -166,6 +227,25 @@ app.post('/add_occasion', (req, res) => {
     });
 });
 
+app.post('/update_occasion', (req, res) => {
+    const { occasion_id, Name, discount_percent } = req.body;
+
+    const sql = `
+        UPDATE occasion
+        SET Name=?,discount_percent=?
+        WHERE occasion_id = ?;
+    `;
+
+    connection.query(sql, [Name, discount_percent, occasion_id], (err, result) => {
+        if (err) {
+            console.error('Error updating occasion details:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        console.log('Occasion details updated successfully:', result);
+        res.json({ success: true });
+    });
+});
 // Endpoint for deleting an occasion
 app.post('/delete_occasion', (req, res) => {
     const { occasion_id } = req.body;
@@ -195,19 +275,28 @@ app.get('/get_occasions', (req, res) => {
 });
 
 // Endpoint for adding a buy record
-app.post('/add_buy_details', (req, res) => {
+app.post('/add_buy_details', async (req, res) => {
     const { buy_id, occasion_id, jewellery_id, customer_id, quantity, buy_date } = req.body;
-    const sql = 'INSERT INTO buys (buy_id, occasion_id, jewellery_id, customer_id, quantity, buy_date) VALUES (?,?,?,?,?,?)';
 
-    connection.query(sql, [buy_id, occasion_id, jewellery_id, customer_id, quantity, buy_date], (err, result) => {
-        if (err) {
-            console.error('Error adding buy record:', err);
-            return res.status(500).json({ error: 'Internal Server Error' });
-        }
-        console.log('Buy record added successfully:', result);
+    try {
+        // Validate input if needed
+
+        // Add the buy record to the buys table
+        const addBuySql = 'INSERT INTO buys (buy_id, occasion_id, jewellery_id, customer_id, quantity, buy_date) VALUES (?, ?, ?, ?, ?, ?)';
+        await executeQuery(addBuySql, [buy_id, occasion_id, jewellery_id, customer_id, quantity, buy_date]);
+
+        // Update the stock in the jewellery_item table
+        const updateStockSql = 'UPDATE jewellery_item SET stock = stock - ? WHERE jewellery_id = ?';
+        await executeQuery(updateStockSql, [quantity, jewellery_id]);
+
+        console.log('Buy record and stock updated successfully');
         res.json({ success: true });
-    });
+    } catch (error) {
+        console.error('Error adding buy record:', error.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
+
 
 // Endpoint for deleting a buy record
 app.post('/delete_buy_details', (req, res) => {
@@ -223,7 +312,26 @@ app.post('/delete_buy_details', (req, res) => {
         res.json({ success: true });
     });
 });
+app.post('/update_buy_details', (req, res) => {
+    const { buy_id, occasion_id, jewellery_id, customer_id, quantity, buy_date } = req.body;
 
+    // Assuming you have a table named 'rents' in your database
+    const sql = `
+        UPDATE buys
+        SET occasion_id = ?, jewellery_id = ?, customer_id = ?, quantity = ?, buy_date = ?
+        WHERE buy_id = ?;
+    `;
+
+    connection.query(sql, [occasion_id, jewellery_id, customer_id, quantity, buy_date, buy_id], (err, result) => {
+        if (err) {
+            console.error('Error updating buy details:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        console.log('Buy details updated successfully:', result);
+        res.json({ success: true });
+    });
+});
 // Endpoint for fetching buy records
 app.get('/get_buy_details', (req, res) => {
     const sql = 'SELECT * FROM buys';
@@ -251,20 +359,49 @@ app.get('/rentdetails', (req, res) => {
 });
 
 // Endpoint to add rent details
-app.post('/add_rent', (req, res) => {
+app.post('/add_rent', async (req, res) => {
     const { rent_id, occasion_id, jewellery_id, customer_id, quantity, rent_date, return_date } = req.body;
-    const sql = 'INSERT INTO rents (rent_id, occasion_id, jewellery_id, customer_id, quantity, rent_date, return_date) VALUES (?, ?, ?, ?, ?, ?, ?)';
 
-    connection.query(sql, [rent_id, occasion_id, jewellery_id, customer_id, quantity, rent_date, return_date], (err, result) => {
+    try {
+        // Check if the rent_date is not null and return_date is null
+        if (rent_date && !return_date) {
+            // If conditions are met, update the stock in the jewellery_item table
+            const updateStockQuery = 'UPDATE jewellery_item SET stock = stock - ? WHERE jewellery_id = ?';
+            await executeQuery(updateStockQuery, [quantity, jewellery_id]);
+        }
+
+        // Insert the rent details into the rents table
+        const insertRentQuery = 'INSERT INTO rents (rent_id, occasion_id, jewellery_id, customer_id, quantity, rent_date, return_date) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        const result = await executeQuery(insertRentQuery, [rent_id, occasion_id, jewellery_id, customer_id, quantity, rent_date, return_date]);
+
+        console.log('Rent record added successfully:', result);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error adding rent record:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.post('/update_rent', (req, res) => {
+    const { rent_id, occasion_id, jewellery_id, customer_id, quantity, rent_date, return_date } = req.body;
+
+    // Assuming you have a table named 'rents' in your database
+    const sql = `
+        UPDATE rents 
+        SET occasion_id = ?, jewellery_id = ?, customer_id = ?, quantity = ?, rent_date = ?, return_date = ?
+        WHERE rent_id = ?;
+    `;
+
+    connection.query(sql, [occasion_id, jewellery_id, customer_id, quantity, rent_date, return_date, rent_id], (err, result) => {
         if (err) {
-            console.error('Error adding rent details:', err);
+            console.error('Error updating rent details:', err);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
-        console.log('Rent details added successfully:', result);
+
+        console.log('Rent details updated successfully:', result);
         res.json({ success: true });
     });
 });
-
 // Endpoint to delete rent details
 app.post('/delete_rent', (req, res) => {
     const { rent_id } = req.body;

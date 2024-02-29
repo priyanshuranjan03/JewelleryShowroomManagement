@@ -4,15 +4,16 @@ import { ThemeProvider } from '@mui/material/styles';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 import TableTheme from '../components/TableTheme';
 
-const Buys = () => {
+const BuyDetails = () => {
     const [buysData, setBuysData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [selectedRow, setSelectedRow] = useState(null);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [selectedRow, setSelectedRow] = useState(null);
     const [formData, setFormData] = useState({
         buy_id: '',
         occasion_id: '',
@@ -21,6 +22,7 @@ const Buys = () => {
         quantity: 0,
         buy_date: '',
     });
+    const [isEditing, setIsEditing] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -31,6 +33,7 @@ const Buys = () => {
 
             const data = await response.json();
 
+            // Add a unique id to each row
             const buysDataWithId = data.map((row, index) => ({ id: index + 1, ...row }));
 
             setBuysData(buysDataWithId);
@@ -51,6 +54,7 @@ const Buys = () => {
 
     const handleClose = () => {
         setOpen(false);
+        setIsEditing(false); // Close editing mode when the dialog is closed
     };
 
     const handleSnackbarClose = (event, reason) => {
@@ -62,7 +66,16 @@ const Buys = () => {
 
     const handleAddBuy = async () => {
         try {
-            const response = await fetch('http://localhost:8081/add_buy_details', {
+            // Add your validation logic here
+            if (formData.jewellery_id < 101) {
+                setSnackbarMessage('Jewellery ID should be greater than or equal to 101');
+                setSnackbarOpen(true);
+                return;
+            }
+
+            const url = isEditing ? 'http://localhost:8081/update_buy_details' : 'http://localhost:8081/add_buy_details';
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,15 +84,19 @@ const Buys = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to add buy record');
+                throw new Error(isEditing ? 'Failed to update buy details' : 'Failed to add buy details');
             }
 
+            // Fetch updated data after adding/updating the buy details
             fetchData();
-            setOpen(false);
-            setSnackbarMessage(`Buy record added successfully`);
-            setSnackbarOpen(true);
+            setOpen(false); // Close the dialog
+            setSnackbarMessage(`Buy details ${isEditing ? 'updated' : 'added'} successfully`);
+            setSnackbarOpen(true); // Show success message
+            setIsEditing(false); // Exit editing mode
         } catch (error) {
-            console.error('Error adding buy record:', error.message);
+            console.error(`Error ${isEditing ? 'updating' : 'adding'} buy details:`, error.message);
+            setSnackbarMessage(`Error ${isEditing ? 'updating' : 'adding'} buy details. Please check your input and try again.`);
+            setSnackbarOpen(true);
         }
     };
 
@@ -91,7 +108,7 @@ const Buys = () => {
         }));
     };
 
-    const handleDeleteClick = async (buy_id) => {
+    const handleDeleteBuy = async (buy_id) => {
         try {
             const response = await fetch('http://localhost:8081/delete_buy_details', {
                 method: 'POST',
@@ -102,15 +119,25 @@ const Buys = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to delete buy record');
+                throw new Error('Failed to delete buy details');
             }
 
+            // Fetch updated data after deleting the buy details
             fetchData();
-            setSnackbarMessage(`Buy record deleted successfully`);
-            setSnackbarOpen(true);
+            setSnackbarMessage(`Buy details deleted successfully`);
+            setSnackbarOpen(true); // Show success message
         } catch (error) {
-            console.error('Error deleting buy record:', error.message);
+            console.error('Error deleting buy details:', error.message);
+            setSnackbarMessage('Error deleting buy details. Please try again.');
+            setSnackbarOpen(true);
         }
+    };
+
+    const handleEditButtonClick = (row) => {
+        setSelectedRow(row);
+        setFormData(row);
+        setIsEditing(true);
+        setOpen(true);
     };
 
     const columns = [
@@ -132,11 +159,16 @@ const Buys = () => {
         {
             field: 'actions',
             headerName: 'Actions',
-            flex: 2,
+            flex: 3,
             renderCell: (params) => (
-                <IconButton onClick={() => handleDeleteClick(params.row.buy_id)} color="secondary">
-                    <DeleteIcon style={{ color: 'grey' }} />
-                </IconButton>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <IconButton onClick={() => handleDeleteBuy(params.row.buy_id)} color="secondary">
+                        <DeleteIcon style={{ color: 'grey' }} />
+                    </IconButton>
+                    <IconButton onClick={() => handleEditButtonClick(params.row)}>
+                        <EditIcon color="primary" />
+                    </IconButton>
+                </div>
             ),
         },
     ];
@@ -147,9 +179,8 @@ const Buys = () => {
         <ThemeProvider theme={TableTheme}>
             <div className="h-full w-full p-10">
                 <Button variant="contained" color="primary" onClick={handleClickOpen}>
-                    Add Buy Record
+                    Add Buy Details
                 </Button>
-
                 <DataGrid
                     rows={buysData}
                     columns={columns}
@@ -177,12 +208,11 @@ const Buys = () => {
                         Toolbar: GridToolbarContainer,
                     }}
                 />
-
                 <Dialog open={open} onClose={handleClose}>
-                    <DialogTitle>Add Buy Record</DialogTitle>
+                    <DialogTitle>{isEditing ? 'Edit Buy Details' : 'Add Buy Details'}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            Fill in the details for the new buy record.
+                            Fill in the details for the {isEditing ? 'edited' : 'new'} buy details.
                         </DialogContentText>
                         <TextField
                             margin="normal"
@@ -235,6 +265,9 @@ const Buys = () => {
                             name="buy_date"
                             type="date"
                             fullWidth
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
                             value={formData.buy_date}
                             onChange={handleInputChange}
                         />
@@ -244,11 +277,10 @@ const Buys = () => {
                             Cancel
                         </Button>
                         <Button onClick={handleAddBuy} color="primary">
-                            Add Record
+                            {isEditing ? 'Save Changes' : 'Add Buy'}
                         </Button>
                     </DialogActions>
                 </Dialog>
-
                 <Snackbar
                     open={snackbarOpen}
                     autoHideDuration={6000}
@@ -260,4 +292,4 @@ const Buys = () => {
     );
 };
 
-export default Buys;
+export default BuyDetails;

@@ -1,27 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridToolbarContainer, GridToolbarExport } from '@mui/x-data-grid';
 import { ThemeProvider } from '@mui/material/styles';
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, TextField } from '@mui/material';
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 import TableTheme from '../components/TableTheme';
+
+// ... (imports remain unchanged)
 
 const RentDetails = () => {
     const [rentData, setRentData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [selectedRow, setSelectedRow] = useState(null);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [selectedRow, setSelectedRow] = useState(null);
     const [formData, setFormData] = useState({
         rent_id: '',
         occasion_id: '',
         jewellery_id: '',
         customer_id: '',
         quantity: 0,
-        rent_date: '',
-        return_date: '',
+        rent_date: null,
+        return_date: null,
     });
+    const [isEditing, setIsEditing] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -53,6 +57,7 @@ const RentDetails = () => {
 
     const handleClose = () => {
         setOpen(false);
+        setIsEditing(false); // Close editing mode when the dialog is closed
     };
 
     const handleSnackbarClose = (event, reason) => {
@@ -64,7 +69,16 @@ const RentDetails = () => {
 
     const handleAddRent = async () => {
         try {
-            const response = await fetch('http://localhost:8081/add_rent', {
+            // Add your validation logic here
+            if (formData.jewellery_id < 101) {
+                setSnackbarMessage('Jewellery ID should be greater than or equal to 101');
+                setSnackbarOpen(true);
+                return;
+            }
+
+            const url = isEditing ? 'http://localhost:8081/update_rent' : 'http://localhost:8081/add_rent';
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -73,17 +87,28 @@ const RentDetails = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to add rent details');
+                throw new Error(isEditing ? 'Failed to update rent details' : 'Failed to add rent details');
             }
 
-            // Fetch updated data after adding the item
+            // Fetch updated data after adding/updating the rent details
             fetchData();
             setOpen(false); // Close the dialog
-            setSnackbarMessage(`Rent details added successfully`);
+            setSnackbarMessage(`Rent details ${isEditing ? 'updated' : 'added'} successfully`);
             setSnackbarOpen(true); // Show success message
+            setIsEditing(false); // Exit editing mode
         } catch (error) {
-            console.error('Error adding rent details:', error.message);
+            console.error(`Error ${isEditing ? 'updating' : 'adding'} rent details:`, error.message);
+            setSnackbarMessage(`Error ${isEditing ? 'updating' : 'adding'} rent details. Please check your input and try again.`);
+            setSnackbarOpen(true);
         }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prevData) => ({
+            ...prevData,
+            [name]: value,
+        }));
     };
 
     const handleDeleteRent = async (rent_id) => {
@@ -100,17 +125,26 @@ const RentDetails = () => {
                 throw new Error('Failed to delete rent details');
             }
 
-            // Fetch updated data after deleting the item
+            // Fetch updated data after deleting the rent details
             fetchData();
             setSnackbarMessage(`Rent details deleted successfully`);
             setSnackbarOpen(true); // Show success message
         } catch (error) {
             console.error('Error deleting rent details:', error.message);
+            setSnackbarMessage('Error deleting rent details. Please try again.');
+            setSnackbarOpen(true);
         }
     };
 
+    const handleEditButtonClick = (row) => {
+        setSelectedRow(row);
+        setFormData(row);
+        setIsEditing(true);
+        setOpen(true);
+    };
+
     const columns = [
-        { field: 'rent_id', headerName: 'Rent ID', flex: 1 },
+        { field: 'rent_id', headerName: 'Rent ID', flex: 2 },
         { field: 'occasion_id', headerName: 'Occasion ID', flex: 2 },
         { field: 'jewellery_id', headerName: 'Jewellery ID', flex: 2 },
         { field: 'customer_id', headerName: 'Customer ID', flex: 2 },
@@ -138,28 +172,25 @@ const RentDetails = () => {
         {
             field: 'actions',
             headerName: 'Actions',
-            flex: 2,
+            flex: 3,
             renderCell: (params) => (
-                <IconButton onClick={() => handleDeleteRent(params.row.rent_id)} color="secondary">
-                    <DeleteIcon style={{ color: 'grey' }} />
-                </IconButton>
+                <div>
+                    <IconButton onClick={() => handleDeleteRent(params.row.rent_id)} color="secondary">
+                        <DeleteIcon style={{ color: 'grey' }} />
+                    </IconButton>
+                    <IconButton onClick={() => handleEditButtonClick(params.row)}>
+                        <EditIcon color="primary" />
+                    </IconButton>
+                </div>
             ),
         },
     ];
 
     const getRowId = (row) => row.rent_id;
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prevData) => ({
-            ...prevData,
-            [name]: value,
-        }));
-    };
-
     return (
         <ThemeProvider theme={TableTheme}>
-            <div style={{ height: 'calc(100vh - 100px)', width: '100%', padding: '20px', marginTop: '15px', marginRight: '15px' }}>
+            <div className="h-full w-full p-10">
                 <Button variant="contained" color="primary" onClick={handleClickOpen}>
                     Add Rent Details
                 </Button>
@@ -186,14 +217,16 @@ const RentDetails = () => {
                     }
                     onRowClick={(params) => setSelectedRow(params.row)}
                     selectionModel={selectedRow ? [selectedRow.id] : []}
+                    slots={{
+                        Toolbar: GridToolbarContainer,
+                    }}
                 />
                 <Dialog open={open} onClose={handleClose}>
-                    <DialogTitle>Add Rent Details</DialogTitle>
+                    <DialogTitle>{isEditing ? 'Edit Rent Details' : 'Add Rent Details'}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            Fill in the details for the new rent.
+                            Fill in the details for the {isEditing ? 'edited' : 'new'} rent details.
                         </DialogContentText>
-                        {/* Form fields */}
                         <TextField
                             margin="normal"
                             label="Rent ID"
@@ -269,7 +302,7 @@ const RentDetails = () => {
                             Cancel
                         </Button>
                         <Button onClick={handleAddRent} color="primary">
-                            Add Rent
+                            {isEditing ? 'Save Changes' : 'Add Rent'}
                         </Button>
                     </DialogActions>
                 </Dialog>

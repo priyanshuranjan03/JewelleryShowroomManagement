@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { DataGrid, GridToolbarContainer, GridToolbarExport } from '@mui/x-data-grid';
-import { createTheme } from '@mui/material/styles';
+import { DataGrid, GridToolbarContainer } from '@mui/x-data-grid';
 import { ThemeProvider } from '@mui/material/styles';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 import TableTheme from '../components/TableTheme';
 
 const Customer = () => {
@@ -21,6 +21,7 @@ const Customer = () => {
         Contact: '',
         loyalty_points: 0,
     });
+    const [isEditing, setIsEditing] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -48,10 +49,12 @@ const Customer = () => {
 
     const handleClickOpen = () => {
         setOpen(true);
+        setIsEditing(false); // Set editing mode to false when opening the dialog
     };
 
     const handleClose = () => {
         setOpen(false);
+        setIsEditing(false);
     };
 
     const handleSnackbarClose = (event, reason) => {
@@ -63,7 +66,9 @@ const Customer = () => {
 
     const handleAddCustomer = async () => {
         try {
-            const response = await fetch('http://localhost:8081/add_customer', {
+            const url = isEditing ? 'http://localhost:8081/update_customer' : 'http://localhost:8081/add_customer';
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -72,16 +77,17 @@ const Customer = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to add customer');
+                throw new Error(isEditing ? 'Failed to update customer' : 'Failed to add customer');
             }
 
-            // Fetch updated data after adding the customer
+            // Fetch updated data after adding/updating the customer
             fetchData();
             setOpen(false); // Close the dialog
-            setSnackbarMessage(`Customer ${formData.FName} ${formData.LName} added successfully`);
+            setSnackbarMessage(`${isEditing ? 'Customer updated' : 'Customer added'} successfully`);
             setSnackbarOpen(true); // Show success message
+            setIsEditing(false); // Exit editing mode
         } catch (error) {
-            console.error('Error adding customer:', error.message);
+            console.error(`Error ${isEditing ? 'updating' : 'adding'} customer:`, error.message);
         }
     };
 
@@ -116,6 +122,13 @@ const Customer = () => {
         }
     };
 
+    const handleEditButtonClick = (row) => {
+        setSelectedRow(row);
+        setFormData(row);
+        setIsEditing(true);
+        setOpen(true);
+    };
+
     const columns = [
         { field: 'cust_id', headerName: 'Customer ID', flex: 2 },
         { field: 'FName', headerName: 'First Name', flex: 3 },
@@ -125,15 +138,19 @@ const Customer = () => {
         {
             field: 'actions',
             headerName: 'Actions',
-            flex: 2,
+            flex: 3,
             renderCell: (params) => (
-                <IconButton onClick={() => handleDeleteClick(params.row.cust_id)} color="secondary">
-                    <DeleteIcon style={{ color: 'grey' }} />
-                </IconButton>
+                <div>
+                    <IconButton onClick={() => handleDeleteClick(params.row.cust_id)} color="secondary">
+                        <DeleteIcon style={{ color: 'grey' }} />
+                    </IconButton>
+                    <IconButton onClick={() => handleEditButtonClick(params.row)}>
+                        <EditIcon color="primary" />
+                    </IconButton>
+                </div>
             ),
         },
     ];
-
 
     const getRowId = (row) => row.cust_id;
 
@@ -167,10 +184,10 @@ const Customer = () => {
                     onRowClick={(params) => setSelectedRow(params.row)}
                 />
                 <Dialog open={open} onClose={handleClose}>
-                    <DialogTitle>Add Customer</DialogTitle>
+                    <DialogTitle>{isEditing ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            Fill in the details for the new customer.
+                            Fill in the details for the {isEditing ? 'edited' : 'new'} customer.
                         </DialogContentText>
                         {/* Form fields */}
                         <TextField
@@ -181,6 +198,7 @@ const Customer = () => {
                             fullWidth
                             value={formData.cust_id}
                             onChange={handleInputChange}
+                            disabled={isEditing} // Disable editing of ID when in edit mode
                         />
                         <TextField
                             margin="normal"
@@ -221,7 +239,7 @@ const Customer = () => {
                             Cancel
                         </Button>
                         <Button onClick={handleAddCustomer} color="primary">
-                            Add Customer
+                            {isEditing ? 'Save Changes' : 'Add Customer'}
                         </Button>
                     </DialogActions>
                 </Dialog>

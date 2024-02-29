@@ -5,6 +5,7 @@ import { createTheme } from '@mui/material/styles';
 import { ThemeProvider } from '@mui/material/styles';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import IconButton from '@mui/material/IconButton';
 import TableTheme from '../components/TableTheme';
 
@@ -22,6 +23,7 @@ const Occasion = () => {
         Name: '',
         discount_percent: 0,
     });
+    const [isEditing, setIsEditing] = useState(false);
 
     // Fetch occasion data from the server
     const fetchData = async () => {
@@ -52,11 +54,18 @@ const Occasion = () => {
     // Function to handle opening the dialog
     const handleClickOpen = () => {
         setOpen(true);
+        setIsEditing(false);
+        setFormData({
+            occasion_id: '',
+            Name: '',
+            discount_percent: 0,
+        });
     };
 
     // Function to handle closing the dialog
     const handleClose = () => {
         setOpen(false);
+        setIsEditing(false);
     };
 
     // Function to handle closing the snackbar
@@ -67,10 +76,12 @@ const Occasion = () => {
         setSnackbarOpen(false);
     };
 
-    // Function to handle adding an occasion
-    const handleAddOccasion = async () => {
+    // Function to handle adding/editing an occasion
+    const handleAddEditOccasion = async () => {
         try {
-            const response = await fetch('http://localhost:8081/add_occasion', {
+            const url = isEditing ? 'http://localhost:8081/update_occasion' : 'http://localhost:8081/add_occasion';
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -79,16 +90,17 @@ const Occasion = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to add occasion');
+                throw new Error(isEditing ? 'Failed to update occasion' : 'Failed to add occasion');
             }
 
-            // Fetch updated data after adding the occasion
+            // Fetch updated data after adding/editing the occasion
             fetchData();
             setOpen(false); // Close the dialog
-            setSnackbarMessage(`Occasion ${formData.Name} added successfully`);
+            setSnackbarMessage(`Occasion ${isEditing ? 'updated' : 'added'} successfully`);
             setSnackbarOpen(true); // Show success message
+            setIsEditing(false);
         } catch (error) {
-            console.error('Error adding occasion:', error.message);
+            console.error(`Error ${isEditing ? 'updating' : 'adding'} occasion:`, error.message);
         }
     };
 
@@ -125,6 +137,14 @@ const Occasion = () => {
         }
     };
 
+    // Function to handle edit button click
+    const handleEditClick = (row) => {
+        setSelectedRow(row);
+        setFormData(row);
+        setIsEditing(true);
+        setOpen(true);
+    };
+
     // Define columns for the DataGrid
     const columns = [
         { field: 'occasion_id', headerName: 'Occasion ID', flex: 2 },
@@ -133,15 +153,19 @@ const Occasion = () => {
         {
             field: 'actions',
             headerName: 'Actions',
-            flex: 2,
+            flex: 3,
             renderCell: (params) => (
-                <IconButton onClick={() => handleDeleteClick(params.row.occasion_id)} color="secondary">
-                    <DeleteIcon style={{ color: 'grey' }} />
-                </IconButton>
+                <div>
+                    <IconButton onClick={() => handleDeleteClick(params.row.occasion_id)} color="secondary">
+                        <DeleteIcon style={{ color: 'grey' }} />
+                    </IconButton>
+                    <IconButton onClick={() => handleEditClick(params.row)}>
+                        <EditIcon color="primary" />
+                    </IconButton>
+                </div>
             ),
         },
     ];
-
 
     // Function to get row ID
     const getRowId = (row) => row.occasion_id;
@@ -185,12 +209,12 @@ const Occasion = () => {
                     }}
                 />
 
-                {/* Dialog for adding occasions */}
+                {/* Dialog for adding/editing occasions */}
                 <Dialog open={open} onClose={handleClose}>
-                    <DialogTitle>Add Occasion</DialogTitle>
+                    <DialogTitle>{isEditing ? 'Edit Occasion' : 'Add Occasion'}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            Fill in the details for the new occasion.
+                            Fill in the details for the {isEditing ? 'edited' : 'new'} occasion.
                         </DialogContentText>
                         {/* Form fields */}
                         <TextField
@@ -201,6 +225,7 @@ const Occasion = () => {
                             fullWidth
                             value={formData.occasion_id}
                             onChange={handleInputChange}
+                            disabled={isEditing} // Disable editing of ID during editing
                         />
                         <TextField
                             margin="normal"
@@ -221,12 +246,12 @@ const Occasion = () => {
                         />
                     </DialogContent>
                     <DialogActions>
-                        {/* Buttons for canceling or adding an occasion */}
+                        {/* Buttons for canceling or adding/editing an occasion */}
                         <Button onClick={handleClose} color="primary">
                             Cancel
                         </Button>
-                        <Button onClick={handleAddOccasion} color="primary">
-                            Add Occasion
+                        <Button onClick={handleAddEditOccasion} color="primary">
+                            {isEditing ? 'Save Changes' : 'Add Occasion'}
                         </Button>
                     </DialogActions>
                 </Dialog>

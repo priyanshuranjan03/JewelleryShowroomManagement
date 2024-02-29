@@ -4,6 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 import TableTheme from '../components/TableTheme';
 
 const Supplier = () => {
@@ -19,6 +20,7 @@ const Supplier = () => {
         LName: '',
         Contact_no: '',
     });
+    const [isEditing, setIsEditing] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -46,10 +48,12 @@ const Supplier = () => {
 
     const handleClickOpen = () => {
         setOpen(true);
+        setIsEditing(false); // Set editing mode to false when opening the dialog
     };
 
     const handleClose = () => {
         setOpen(false);
+        setIsEditing(false);
     };
 
     const handleSnackbarClose = (event, reason) => {
@@ -61,7 +65,9 @@ const Supplier = () => {
 
     const handleAddSupplier = async () => {
         try {
-            const response = await fetch('http://localhost:8081/add_supplier', {
+            const url = isEditing ? 'http://localhost:8081/update_supplier' : 'http://localhost:8081/add_supplier';
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -70,16 +76,17 @@ const Supplier = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to add supplier');
+                throw new Error(isEditing ? 'Failed to update supplier' : 'Failed to add supplier');
             }
 
-            // Fetch updated data after adding the supplier
+            // Fetch updated data after adding/updating the supplier
             fetchData();
             setOpen(false); // Close the dialog
-            setSnackbarMessage(`Supplier ${formData.FName} ${formData.LName} added successfully`);
+            setSnackbarMessage(`${isEditing ? 'Supplier updated' : 'Supplier added'} successfully`);
             setSnackbarOpen(true); // Show success message
+            setIsEditing(false); // Exit editing mode
         } catch (error) {
-            console.error('Error adding supplier:', error.message);
+            console.error(`Error ${isEditing ? 'updating' : 'adding'} supplier:`, error.message);
         }
     };
 
@@ -114,6 +121,13 @@ const Supplier = () => {
         }
     };
 
+    const handleEditButtonClick = (row) => {
+        setSelectedRow(row);
+        setFormData(row);
+        setIsEditing(true);
+        setOpen(true);
+    };
+
     const columns = [
         { field: 'supplier_id', headerName: 'Supplier ID', flex: 1 },
         { field: 'FName', headerName: 'First Name', flex: 2 },
@@ -122,11 +136,16 @@ const Supplier = () => {
         {
             field: 'actions',
             headerName: 'Actions',
-            flex: 2,
+            flex: 3,
             renderCell: (params) => (
-                <IconButton onClick={() => handleDeleteSupplier(params.row.supplier_id)} color="secondary">
-                    <DeleteIcon style={{ color: 'grey' }} />
-                </IconButton>
+                <div>
+                    <IconButton onClick={() => handleDeleteSupplier(params.row.supplier_id)} color="secondary">
+                        <DeleteIcon style={{ color: 'grey' }} />
+                    </IconButton>
+                    <IconButton onClick={() => handleEditButtonClick(params.row)}>
+                        <EditIcon color="primary" />
+                    </IconButton>
+                </div>
             ),
         },
     ];
@@ -162,16 +181,12 @@ const Supplier = () => {
                         params.id === 1 ? 'custom-first-row' : 'custom-other-rows'
                     }
                     onRowClick={(params) => setSelectedRow(params.row)}
-                    selectionModel={selectedRow ? [selectedRow.id] : []}
-                    slots={{
-                        Toolbar: GridToolbarContainer,
-                    }}
                 />
                 <Dialog open={open} onClose={handleClose}>
-                    <DialogTitle>Add Supplier</DialogTitle>
+                    <DialogTitle>{isEditing ? 'Edit Supplier' : 'Add Supplier'}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            Fill in the details for the new supplier.
+                            Fill in the details for the {isEditing ? 'edited' : 'new'} supplier.
                         </DialogContentText>
                         {/* Form fields */}
                         <TextField
@@ -182,6 +197,7 @@ const Supplier = () => {
                             fullWidth
                             value={formData.supplier_id}
                             onChange={handleInputChange}
+                            disabled={isEditing} // Disable editing of ID when in edit mode
                         />
                         <TextField
                             margin="normal"
@@ -213,7 +229,7 @@ const Supplier = () => {
                             Cancel
                         </Button>
                         <Button onClick={handleAddSupplier} color="primary">
-                            Add Supplier
+                            {isEditing ? 'Save Changes' : 'Add Supplier'}
                         </Button>
                     </DialogActions>
                 </Dialog>

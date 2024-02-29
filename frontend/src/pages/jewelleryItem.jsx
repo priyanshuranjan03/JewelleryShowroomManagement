@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridToolbarContainer, GridToolbarExport } from '@mui/x-data-grid';
-import { createTheme } from '@mui/material/styles';
 import { ThemeProvider } from '@mui/material/styles';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 import TableTheme from '../components/TableTheme';
-
 
 const JewelleryItem = () => {
     const [jewelleryData, setJewelleryData] = useState([]);
@@ -24,6 +23,7 @@ const JewelleryItem = () => {
         rent_cost: 0,
         weight: 0,
     });
+    const [isEditing, setIsEditing] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -51,10 +51,12 @@ const JewelleryItem = () => {
 
     const handleClickOpen = () => {
         setOpen(true);
+        setIsEditing(false); // Set editing mode to false when opening the dialog
     };
 
     const handleClose = () => {
         setOpen(false);
+        setIsEditing(false);
     };
 
     const handleSnackbarClose = (event, reason) => {
@@ -66,7 +68,15 @@ const JewelleryItem = () => {
 
     const handleAddItem = async () => {
         try {
-            const response = await fetch('http://localhost:8081/add_jewellery_item', {
+            if (formData.jewellery_id < 101) {
+                setSnackbarMessage('Jewellery ID should be greater than or equal to 101');
+                setSnackbarOpen(true);
+                return;
+            }
+
+            const url = isEditing ? 'http://localhost:8081/update_jewellery_item' : 'http://localhost:8081/add_jewellery_item';
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -75,16 +85,19 @@ const JewelleryItem = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to add jewellery item');
+                throw new Error(isEditing ? 'Failed to update jewellery item' : 'Failed to add jewellery item');
             }
 
-            // Fetch updated data after adding the item
+            // Fetch updated data after adding/updating the item
             fetchData();
             setOpen(false); // Close the dialog
-            setSnackbarMessage(`Jewellery item ${formData.item_name} added successfully`);
+            setSnackbarMessage(`${isEditing ? 'Jewellery item updated' : 'Jewellery item added'} successfully`);
             setSnackbarOpen(true); // Show success message
+            setIsEditing(false); // Exit editing mode
         } catch (error) {
-            console.error('Error adding jewellery item:', error.message);
+            console.error(`Error ${isEditing ? 'updating' : 'adding'} jewellery item:`, error.message);
+            setSnackbarMessage(`Error ${isEditing ? 'updating' : 'adding'} jewellery item. Please check your input and try again.`);
+            setSnackbarOpen(true);
         }
     };
 
@@ -119,6 +132,13 @@ const JewelleryItem = () => {
         }
     };
 
+    const handleEditButtonClick = (row) => {
+        setSelectedRow(row);
+        setFormData(row);
+        setIsEditing(true);
+        setOpen(true);
+    };
+
     const columns = [
         { field: 'jewellery_id', headerName: 'Jewellery ID', flex: 2 },
         { field: 'item_name', headerName: 'Item Name', flex: 3 },
@@ -130,15 +150,19 @@ const JewelleryItem = () => {
         {
             field: 'actions',
             headerName: 'Actions',
-            flex: 2,
+            flex: 3,
             renderCell: (params) => (
-                <IconButton onClick={() => handleDeleteClick(params.row.jewellery_id)} color="secondary">
-                    <DeleteIcon style={{ color: 'grey' }} />
-                </IconButton>
+                <div>
+                    <IconButton onClick={() => handleDeleteClick(params.row.jewellery_id)} color="secondary">
+                        <DeleteIcon style={{ color: 'grey' }} />
+                    </IconButton>
+                    <IconButton onClick={() => handleEditButtonClick(params.row)}>
+                        <EditIcon color="primary" />
+                    </IconButton>
+                </div>
             ),
         },
     ];
-
 
     const getRowId = (row) => row.jewellery_id;
 
@@ -176,10 +200,10 @@ const JewelleryItem = () => {
                     }}
                 />
                 <Dialog open={open} onClose={handleClose}>
-                    <DialogTitle>Add Jewellery Item</DialogTitle>
+                    <DialogTitle>{isEditing ? 'Edit Jewellery Item' : 'Add Jewellery Item'}</DialogTitle>
                     <DialogContent>
                         <DialogContentText>
-                            Fill in the details for the new jewellery item.
+                            Fill in the details for the {isEditing ? 'edited' : 'new'} jewellery item.
                         </DialogContentText>
                         {/* Form fields */}
                         <TextField
@@ -190,6 +214,7 @@ const JewelleryItem = () => {
                             fullWidth
                             value={formData.jewellery_id}
                             onChange={handleInputChange}
+                            disabled={isEditing} // Disable ID field in editing mode
                         />
                         <TextField
                             margin="normal"
@@ -249,7 +274,7 @@ const JewelleryItem = () => {
                             Cancel
                         </Button>
                         <Button onClick={handleAddItem} color="primary">
-                            Add Item
+                            {isEditing ? 'Save Changes' : 'Add Item'}
                         </Button>
                     </DialogActions>
                 </Dialog>
