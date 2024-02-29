@@ -23,6 +23,49 @@ app.get('/signIn', (req, res) => {
         return res.json(data);
     })
 })
+app.get('/get_jewellery_items', (req, res) => {
+    const sql = "SELECT * FROM jewellery_item";
+    connection.query(sql, (err, data) => {
+        if (err) return res.json(err);
+        return res.json(data);
+    })
+})
+app.post('/delete_jewellery_item', (req, res) => {
+    const { jewellery_id } = req.body;
+
+    const sql = 'DELETE FROM jewellery_item WHERE jewellery_id = ?';
+    connection.query(sql, [jewellery_id], (err, data) => {
+        if (err) {
+            console.error('Error deleting jewellery item:', jewellery_id, err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+        console.log('Jewellery item deleted successfully:', data);
+        res.json({ success: true });
+    })
+});
+app.post('/add_jewellery_item', (req, res) => {
+    const { descr, jewellery_id, item_name, stock, buy_cost, rent_cost, weight } = req.body;
+
+    // You should perform validation on the received data before inserting it into the database
+
+    const sql = 'INSERT INTO jewellery_item (descr, jewellery_id, item_name, stock, buy_cost, rent_cost, weight) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    connection.query(sql, [descr, jewellery_id, item_name, stock, buy_cost, rent_cost, weight], (err, result) => {
+        if (err) {
+            console.error('Error adding jewellery item:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+        console.log('Jewellery item added successfully:', result);
+        res.json({ success: true });
+    });
+});
+
+app.get('/suppliers', (req, res) => {
+    const sql = "SELECT * FROM supplier";
+    connection.query(sql, (err, data) => {
+        if (err) return res.json(err);
+        return res.json(data);
+    })
+})
 app.post('/register', (req, res) => {
     const { name, id, email, password } = req.body;
 

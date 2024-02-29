@@ -37,6 +37,11 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import JewelleryItem from './pages/jewelleryItem';
 import AuthCard from './components/AuthCard';
 import Dashboard from './components/Dashboard';
+import Supplier from './pages/Supplier';
+import Customer from './pages/Customer';
+import Occasion from './pages/Occasion';
+import Buy from './pages/buyDetails';
+import Rent from './pages/rentDetails';
 
 const App = () => {
   return (
@@ -45,6 +50,11 @@ const App = () => {
         <Route path="/" element={<AuthCard />} />
         <Route path="/jewellery" element={<JewelleryItem />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/suppliers" element={<Supplier />} />
+        <Route path="/customers" element={<Customer />} />
+        <Route path="/occasions" element={<Occasion />} />
+        <Route path="/buy" element={<Buy />} />
+        <Route path="/rent" element={<Rent />} />
         {/* ... other routes */}
       </Routes>
     </Router>
