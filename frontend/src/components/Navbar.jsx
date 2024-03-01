@@ -4,7 +4,7 @@ import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
-import NavDropdown from 'react-bootstrap/NavDropdown';
+import PredictDiscount from './PredictDiscount';
 
 function NavbarItem() {
     return (
@@ -21,8 +21,10 @@ function NavbarItem() {
                         <Nav.Link href="#home">Home</Nav.Link>
                         <Nav.Link href="#documentation">Documentation</Nav.Link>
                         <Nav.Link href="#contact">Contact</Nav.Link>
+                        <PredictDiscount />
                     </Nav>
                     <Form className="d-flex">
+
                         <Form.Control
                             type="search"
                             placeholder="Search"
@@ -30,6 +32,7 @@ function NavbarItem() {
                             aria-label="Search"
                         />
                         <Button variant="outline-success">Search</Button>
+
                     </Form>
                 </Navbar.Collapse>
             </Container>

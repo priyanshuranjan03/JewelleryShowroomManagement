@@ -42,7 +42,10 @@ const Customer = () => {
             setLoading(false);
         }
     };
-
+    // const getLoyaltyPoints = async (customerIdToFind) => {
+    //     const foundCustomer = customerData.find((customer) => customer.cust_id === customerIdToFind);
+    //     return foundCustomer.loyalty_points;
+    // };
     useEffect(() => {
         fetchData();
     }, []);
@@ -249,9 +252,11 @@ const Customer = () => {
                     onClose={handleSnackbarClose}
                     message={snackbarMessage}
                 />
+
             </div>
         </ThemeProvider>
     );
 };
 
 export default Customer;
+

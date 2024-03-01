@@ -433,6 +433,52 @@ app.post('/register', (req, res) => {
     });
 });
 
+
+app.get('/get_loyalty_points/:customer_id', async (req, res) => {
+    const { customer_id } = req.params;
+    try {
+        const query = 'SELECT loyalty_points FROM customer WHERE cust_id = ?';
+        connection.query(query, [customer_id], (error, results) => {
+            if (error) {
+                console.error('Error fetching Loyalty Points:', error);
+                res.status(500).json({ error: 'Internal Server Error' });
+                return;
+            }
+            //console.log(results[0].loyalty_points)
+            if (results.length > 0) {
+                res.json({ loyalty_points: results[0].loyalty_points });
+            } else {
+                res.status(404).json({ error: 'Customer not found' });
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching Loyalty Points:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.get('/get_discount_per/:occasion_id', async (req, res) => {
+    const { occasion_id } = req.params;
+    try {
+        const query = 'SELECT discount_percent FROM occasion WHERE occasion_id = ?';
+        connection.query(query, [occasion_id], (error, results) => {
+            if (error) {
+                console.error('Error fetching Discount %:', error);
+                res.status(500).json({ error: 'Internal Server Error' });
+                return;
+            }
+            //console.log(results[0].discount_percent)
+            if (results.length > 0) {
+                res.json({ discount: results[0].discount_percent });
+            } else {
+                res.status(404).json({ error: 'Occasion not found' });
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching Discount %:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 app.listen(8081, () => {
     console.log("listening")
 })
