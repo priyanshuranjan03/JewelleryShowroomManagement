@@ -63,7 +63,7 @@ function Register({ onSignIn }) {
 
             // If registration is successful, proceed with sign-in
             console.log('User signed up:', formData);
-            onSignIn();
+            onSignIn(formData.name);
         } catch (error) {
             console.error('Error registering user:', error.message);
             setErrors({
