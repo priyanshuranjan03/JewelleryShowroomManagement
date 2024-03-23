@@ -60,7 +60,7 @@ app.post('/update_jewellery_item', (req, res) => {
     const sql = `
         UPDATE jewellery_item
         SET descr=?,item_name=?,stock=?,buy_cost=?,rent_cost=?,weight=?
-        WHERE supplier_id = ?;
+        WHERE jewellery_id = ?;
     `;
     connection.query(sql, [descr, item_name, stock, buy_cost, rent_cost, weight, jewellery_id], (err, result) => {
         if (err) {
@@ -476,6 +476,51 @@ app.get('/get_discount_per/:occasion_id', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching Discount %:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+app.post('/generate_report', (req, res) => {
+    const { buyCostComparison, buyCostValue, buyCostLogicalOperator, stockComparison, stockValue } = req.body;
+
+    // Construct SQL query based on filter criteria
+    const sql = `
+        SELECT descr, item_name
+        FROM jewellery_item
+        WHERE buy_cost ${buyCostComparison} ? ${buyCostLogicalOperator}
+        stock ${stockComparison} ?;
+    `;
+
+    // Execute the SQL query
+    connection.query(sql, [buyCostValue, stockValue], (err, result) => {
+        if (err) {
+            console.error('Error generating report:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        console.log('Report generated successfully:', result);
+        res.json(result);
+    });
+});
+app.get('/total_rent_by_month', async (req, res) => {
+    try {
+        const sql = `
+            SELECT MONTH(r.rent_date) AS Month, SUM(j.rent_cost * r.quantity) AS Total_Rent
+            FROM rents r
+            JOIN jewellery_item j ON r.jewellery_id = j.jewellery_id
+            GROUP BY MONTH(r.rent_date);
+        `;
+
+        connection.query(sql, (err, rows) => {
+            if (err) {
+                console.error('Error fetching total rents based on month:', err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+
+            console.log('Total sales per month on renting fetched successfully');
+            res.json(rows);
+        });
+    } catch (error) {
+        console.error('Error fetching total rent by month:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });

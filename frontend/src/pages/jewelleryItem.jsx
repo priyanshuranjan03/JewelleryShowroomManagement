@@ -14,6 +14,8 @@ const JewelleryItem = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null)
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [reportData, setReportData] = useState([]);
+    const [showReportDialog, setShowReportDialog] = useState(false);
     const [formData, setFormData] = useState({
         jewellery_id: '',
         descr: '',
@@ -24,6 +26,13 @@ const JewelleryItem = () => {
         weight: 0,
     });
     const [isEditing, setIsEditing] = useState(false);
+    const [filterCriteria, setFilterCriteria] = useState({
+        buyCostComparison: '=',
+        buyCostValue: 0,
+        buyCostLogicalOperator: 'and',
+        stockComparison: '=',
+        stockValue: 0,
+    });
 
     const fetchData = async () => {
         try {
@@ -139,6 +148,40 @@ const JewelleryItem = () => {
         setOpen(true);
     };
 
+
+    // New function to handle filter criteria changes
+    const handleFilterCriteriaChange = (e) => {
+        const { name, value } = e.target;
+        setFilterCriteria((prevCriteria) => ({
+            ...prevCriteria,
+            [name]: value,
+        }));
+    };
+
+    // New function to handle the report generation
+    const generateReport = async () => {
+        try {
+            const response = await fetch('http://localhost:8081/generate_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(filterCriteria),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate report');
+            }
+
+            // Handle the report data as needed
+            const reportData = await response.json();
+            console.log('Generated Report:', reportData);
+            setReportData(reportData)
+            setShowReportDialog(true)
+        } catch (error) {
+            console.error('Error generating report:', error.message);
+        }
+    };
     const columns = [
         { field: 'jewellery_id', headerName: 'Jewellery ID', flex: 2 },
         { field: 'item_name', headerName: 'Item Name', flex: 3 },
@@ -278,6 +321,92 @@ const JewelleryItem = () => {
                         </Button>
                     </DialogActions>
                 </Dialog>
+
+                <div className="mt-5 p-4 border rounded-md shadow-md bg-white">
+                    <h3 className="text-xl font-semibold mb-4 text-gray-800">Generate Report</h3>
+                    <h2 className="text-l font-semibold mb-4 text-gray-600">Selecting Jewellery and Description for</h2>
+                    <div className="flex items-center space-x-4">
+                        <div className="flex items-center">
+                            <label className="mr-2 text-gray-700">Buy Cost</label>
+                            <select
+                                name="buyCostComparison"
+                                value={filterCriteria.buyCostComparison}
+                                onChange={handleFilterCriteriaChange}
+                                className="p-2 border rounded-md bg-gray-100"
+                            >
+                                <option value="=">=</option>
+                                <option value="<">&#60;</option>
+                                <option value=">">&#62;</option>
+                            </select>
+                            <input
+                                type="number"
+                                name="buyCostValue"
+                                value={filterCriteria.buyCostValue}
+                                onChange={handleFilterCriteriaChange}
+                                className="p-2 border rounded-md bg-gray-100 ml-2"
+                            />
+                        </div>
+                        <div className="flex items-center">
+                            <label className="mr-2">Logical Operator</label>
+                            <select
+                                name="buyCostLogicalOperator"
+                                value={filterCriteria.buyCostLogicalOperator}
+                                onChange={handleFilterCriteriaChange}
+                                className="p-2 border rounded-md"
+                            >
+                                <option value="and">AND</option>
+                                <option value="or">OR</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center">
+                            <label className="mr-2">Stock</label>
+                            <select
+                                name="stockComparison"
+                                value={filterCriteria.stockComparison}
+                                onChange={handleFilterCriteriaChange}
+                                className="p-2 border rounded-md"
+                            >
+                                <option value="=">=</option>
+                                <option value="<">&#60;</option>
+                                <option value=">">&#62;</option>
+                            </select>
+                            <input
+                                type="number"
+                                name="stockValue"
+                                value={filterCriteria.stockValue}
+                                onChange={handleFilterCriteriaChange}
+                                className="p-2 border rounded-md ml-2"
+                            />
+                        </div>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={generateReport}
+                            className="ml-4 bg-gradient-to-r from-green-400 to-blue-500 text-white hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600"
+                        >
+                            Generate Report
+                        </Button>
+                    </div>
+                </div>
+                <Dialog open={showReportDialog} onClose={() => setShowReportDialog(false)}>
+                    <DialogTitle>Your Requirements Summary:</DialogTitle>
+                    <DialogContent>
+                        <DialogContentText>
+                            {/* Display the report data in a well-organized and appealing way */}
+                            {reportData.map((item, index) => (
+                                <div key={index}>
+                                    {item.descr} - {item.item_name}
+                                </div>
+                            ))}
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setShowReportDialog(false)} color="primary">
+                            Close
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+
                 <Snackbar
                     open={snackbarOpen}
                     autoHideDuration={6000}

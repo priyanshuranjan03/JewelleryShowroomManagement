@@ -197,7 +197,7 @@ const Supplier = () => {
                             fullWidth
                             value={formData.supplier_id}
                             onChange={handleInputChange}
-                            disabled={isEditing} // Disable editing of ID when in edit mode
+                            disabled={isEditing}
                         />
                         <TextField
                             margin="normal"

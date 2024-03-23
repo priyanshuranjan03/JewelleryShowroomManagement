@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DataGrid, GridToolbarContainer, GridToolbarExport } from '@mui/x-data-grid';
 import { ThemeProvider } from '@mui/material/styles';
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar } from '@mui/material';
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Snackbar, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
@@ -27,6 +27,7 @@ const RentDetails = () => {
     });
     const [isEditing, setIsEditing] = useState(false);
 
+    const [showReportDialog, setShowReportDialog] = useState(false);
     const fetchData = async () => {
         try {
             const response = await fetch('http://localhost:8081/rentdetails');
@@ -143,6 +144,29 @@ const RentDetails = () => {
         setOpen(true);
     };
 
+    const [selectedMonth, setSelectedMonth] = useState(1); // Default to January
+
+    const handleMonthChange = (event) => {
+        setSelectedMonth(event.target.value);
+    };
+    // New function to handle the report generation
+    const generateReport = async () => {
+        try {
+            const response = await fetch('http://localhost:8081/total_rent_by_month');
+
+            if (!response.ok) {
+                throw new Error('Failed to generate report');
+            }
+
+            // Handle the report data as needed
+            const reportData = await response.json();
+            console.log('Generated Report:', reportData);
+            setReportData(reportData)
+            setShowReportDialog(true)
+        } catch (error) {
+            console.error('Error generating report:', error.message);
+        }
+    };
     const columns = [
         { field: 'rent_id', headerName: 'Rent ID', flex: 2 },
         { field: 'occasion_id', headerName: 'Occasion ID', flex: 2 },
@@ -187,7 +211,9 @@ const RentDetails = () => {
     ];
 
     const getRowId = (row) => row.rent_id;
-
+    const [reportData, setReportData] = useState([]);
+    const selectedMonthData = reportData.find((item) => item.Month === selectedMonth);
+    // console.log("selected month data=", selectedMonthData)
     return (
         <ThemeProvider theme={TableTheme}>
             <div className="h-full w-full p-10">
@@ -306,6 +332,67 @@ const RentDetails = () => {
                         </Button>
                     </DialogActions>
                 </Dialog>
+
+                <div className="mt-5 p-4 border rounded-md shadow-md bg-white">
+                    <h3 className="text-xl font-semibold mb-4 text-gray-800">Get the Sales for Month</h3>
+                    <div className="flex items-center space-x-4">
+                        <FormControl variant="outlined" style={{ width: '50%' }}>
+                            <Select
+                                labelId="month-label"
+                                id="month-select"
+                                value={selectedMonth}
+                                onChange={handleMonthChange}
+                            >
+                                <MenuItem value={1}>January</MenuItem>
+                                <MenuItem value={2}>February</MenuItem>
+                                <MenuItem value={3}>March</MenuItem>
+                                <MenuItem value={4}>April</MenuItem>
+                                <MenuItem value={5}>May</MenuItem>
+                                <MenuItem value={6}>June</MenuItem>
+                                <MenuItem value={7}>July</MenuItem>
+                                <MenuItem value={8}>August</MenuItem>
+                                <MenuItem value={9}>September</MenuItem>
+                                <MenuItem value={10}>October</MenuItem>
+                                <MenuItem value={11}>November</MenuItem>
+                                <MenuItem value={12}>December</MenuItem>
+                                {/* Add more months as needed */}
+                            </Select>
+                        </FormControl>
+
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => generateReport(selectedMonth)}
+                            className="ml-4 bg-gradient-to-r from-green-400 to-blue-500 text-white hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600"
+                        >
+                            Generate Report
+                        </Button>
+                    </div>
+
+                    <Dialog open={showReportDialog} onClose={() => setShowReportDialog(false)}>
+                        <DialogTitle>Generated Report</DialogTitle>
+                        <DialogContent>
+                            <DialogContentText>
+                                {/* Display the report data in a well-organized and appealing way */}
+                                {selectedMonthData ? console.log(selectedMonthData) : `No data available for ${getMonthName(selectedMonth)}.`}
+                                {reportData
+                                    .filter((item) => item.Month === selectedMonth)
+                                    .map((item, index) => (
+
+                                        <div>
+                                            Total Sales for Renting in {getMonthName(selectedMonth)}: Rs. {selectedMonthData.Total_Rent}
+                                        </div>
+
+                                    ))}
+                            </DialogContentText>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button onClick={() => setShowReportDialog(false)} color="primary">
+                                Close
+                            </Button>
+                        </DialogActions>
+                    </Dialog>
+                </div>
                 <Snackbar
                     open={snackbarOpen}
                     autoHideDuration={6000}
@@ -317,4 +404,11 @@ const RentDetails = () => {
     );
 };
 
+const getMonthName = (monthNumber) => {
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return monthNames[monthNumber - 1];
+};
 export default RentDetails;
